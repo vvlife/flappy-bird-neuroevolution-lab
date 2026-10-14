@@ -1,0 +1,14 @@
+# macOS
+.DS_Store
+
+# Node（此專案零外部依賴，但仍預留）
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# 訓練產物（用 `node src/train.js` 重新產生）
+model.json
+
+# 暫存檔
+*.log
+.DS_Store

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Flappy Bird AI 訓練競賽平台</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <div class="header-top">
+      <h1>🐤 Flappy Bird AI 訓練競賽平台</h1>
+      <nav class="tabs">
+        <button class="tab active" data-view="play">🏟 排行榜 / 競技</button>
+        <button class="tab" data-view="train">🧬 在線訓練</button>
+        <button class="tab" data-view="docs">📖 API 文檔</button>
+      </nav>
+    </div>
+    <p>訓練你的神經網絡 → 提交模型 → 登上排行榜 → 即時觀看實戰畫面</p>
+  </header>
+
+  <main>
+    <!-- ============ 視圖 1：排行榜 / 競技 ============ -->
+    <div id="view-play" class="view active">
+      <section class="left">
+        <h2>🏆 排行榜</h2>
+        <div class="board-tools">
+          <button id="selectAll" class="tool">全選</button>
+          <button id="clearSel" class="tool">清除</button>
+          <button id="raceBtn" class="race">🏁 一起玩（勾選競賽）<span id="selCount"></span></button>
+        </div>
+        <table id="board">
+          <thead>
+            <tr><th></th><th>#</th><th>名字</th><th>分數</th><th>操作</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div class="actions">
+          <button id="watchBest">▶ 觀看最佳</button>
+          <button id="watchRandom">🎲 隨機觀看</button>
+          <button id="refresh">🔄 刷新</button>
+        </div>
+
+        <h2>📤 手動提交模型</h2>
+        <form id="submitForm">
+          <input id="nameInput" placeholder="你的名字" maxlength="40" required>
+          <div class="row">
+            <input id="modelInput" placeholder="貼上 model.json 內容">
+            <label class="file">或選檔
+              <input id="modelFile" type="file" accept=".json">
+            </label>
+          </div>
+          <button type="submit">提交模型</button>
+        </form>
+        <pre id="submitResult"></pre>
+
+        <h2>🤖 給 Agent 的說明（一鍵複製）</h2>
+        <div class="agent-box">
+          <button id="copyAgent" class="tool">📋 一鍵複製</button>
+          <pre id="agentDoc"></pre>
+        </div>
+      </section>
+
+      <section class="right">
+        <h2>🎮 即時畫面</h2>
+        <div class="speed-control">
+          速度：
+          <button class="spd active" data-speed="1">1x</button>
+          <button class="spd" data-speed="2">2x</button>
+          <button class="spd" data-speed="4">4x</button>
+          <button class="spd" data-speed="8">8x</button>
+        </div>
+        <canvas id="game" width="400" height="600"></canvas>
+        <div id="status">選擇一筆提交來觀看，或點「觀看最佳」。也可勾選多筆後按「🏁 一起玩」。</div>
+        <div id="raceInfo"></div>
+      </section>
+    </div>
+
+    <!-- ============ 視圖 2：在線訓練 ============ -->
+    <div id="view-train" class="view">
+      <div class="train-grid">
+        <div class="train-controls">
+          <h2>🧬 在線訓練（神經演化）</h2>
+          <p class="hint">在瀏覽器裡即時演化一群小鳥：調整參數 → 開始訓練 → 看右方動畫一代代變強 → 完成後一鍵提交或下載模型。演化有隨機性，若分數不理想可按「🔁 再跑一次」碰運氣。</p>
+
+          <div class="form-grid">
+            <label>代數
+              <input id="tGenerations" type="number" value="30" min="1" max="500">
+            </label>
+            <label>種群數量
+              <input id="tPopulation" type="number" value="20" min="2" max="80">
+            </label>
+            <label>菁英保留 topK
+              <input id="tTopK" type="number" value="4" min="1" max="20">
+            </label>
+            <label>突變率
+              <input id="tMutation" type="number" value="0.1" step="0.01" min="0" max="1">
+            </label>
+            <label>隨機種子
+              <input id="tSeed" type="number" value="12345">
+            </label>
+            <label>每代最長幀數
+              <input id="tMaxFrames" type="number" value="2000" min="200" max="20000" step="100">
+            </label>
+            <label>動畫速度（步/幀）
+              <input id="tSpeed" type="number" value="15" min="1" max="60">
+            </label>
+          </div>
+
+          <div class="actions">
+            <button id="trainStart" class="race">▶ 開始訓練</button>
+            <button id="trainStop" class="tool" disabled>⏹ 停止</button>
+          </div>
+          <div id="trainProgress" class="train-progress">尚未開始訓練</div>
+          <div id="trainLog" class="train-log"></div>
+
+          <div id="trainResult" class="train-result hidden">
+            <h3>🎉 訓練完成</h3>
+            <div id="trainScore"></div>
+            <div class="row">
+              <input id="trainName" placeholder="提交用的名字" maxlength="40">
+              <button id="trainSubmit" class="race">提交到排行榜</button>
+              <button id="trainDownload" class="tool">⬇ 下載 model.json</button>
+              <button id="trainWatch" class="tool">▶ 觀看</button>
+              <button id="trainAgain" class="tool">🔁 再跑一次</button>
+            </div>
+            <pre id="trainSubmitResult"></pre>
+          </div>
+        </div>
+
+        <div class="train-visual">
+          <canvas id="trainCanvas" width="400" height="600"></canvas>
+          <div class="chart-wrap">
+            <div class="chart-title">每代最佳 fitness（演化曲線）</div>
+            <canvas id="trainChart" width="400" height="120"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 視圖 3：API 文檔 ============ -->
+    <div id="view-docs" class="view">
+      <div class="docs-wrap">
+        <div class="docs-bar">
+          <span class="docs-note">以下為 <code>docs/API.md</code> 即時渲染，可直接交給 AI 代理使用</span>
+          <button id="copyDocs" class="tool">📋 複製 API.md 原文</button>
+        </div>
+        <article id="docsContent" class="markdown"><p class="hint">載入中…</p></article>
+      </div>
+    </div>
+  </main>
+
+  <!-- benchmark 結果彈窗 -->
+  <div id="benchModal" class="modal hidden">
+    <div class="modal-box">
+      <div class="modal-head">
+        <span id="benchTitle">Benchmark</span>
+        <button id="benchClose" class="tool">✕</button>
+      </div>
+      <div id="benchContent"></div>
+      <div class="modal-foot">
+        <button id="benchDownload" class="race">⬇ 下載 JSON</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/src/neuralnet.js"></script>
+  <script src="/src/sim.js"></script>
+  <script src="/trainer.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>

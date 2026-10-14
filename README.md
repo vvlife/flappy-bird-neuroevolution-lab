@@ -1,0 +1,157 @@
+# 🐤 Flappy Bird AI 訓練競賽平台 · Flappy Bird AI Training Arena
+
+> 用**神經演化（Neuro-Evolution）**訓練一個會玩 Flappy Bird 的神經網絡，提交模型、登上排行榜、觀看實戰畫面。
+> 學生與 AI 代理（如 WorkBuddy）都能透過接口參賽。
+
+[![node](https://img.shields.io/badge/node-18%2B-5FA04E?logo=node.js)](https://nodejs.org)
+[![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![deps](https://img.shields.io/badge/dependencies-0-ff69b4?logo=npm)](package.json)
+
+---
+
+## 這個專案在做什麼
+
+把經典的 [Machine-Learning-Flappy-Bird](https://github.com/ssusnic/Machine-Learning-Flappy-Bird)（`Phaser` + `Synaptic` + 遺傳演算法）改造成一個**可多人參賽的教學平台**：
+
+- 🧬 **訓練**：在線訓練分頁（瀏覽器內跑神經演化，即時調節參數、觀察種群競爭動畫）或用 CLI / Python / PyTorch 自行訓練；
+- 📤 **提交**：透過 `POST /api/submit` 把 `model.json` 送上台，或用頁面上的「🤖 給 Agent 的說明」一鍵複製交給 AI 代理代勞；
+- 🏆 **評分**：伺服器用**固定評分賽道**（`EVAL_SEED=12345`）客觀計分，確保所有人可比；
+- 📊 **Benchmark**：多種子穩健度測試，報告可下載 JSON；
+- 🎮 **觀戰**：多個 Agent 在同一條賽道同時競技，1x–8x 倍速 freely 觀看。
+
+> **設計原則**：訓練在哪裡發生由你決定。本平台只負責「收模型 → 跑結果 → 記分 → 展示」。
+
+---
+
+## 快速開始
+
+需要 **Node.js 18+**。本專案**零外部依賴**，不需要 `npm install`。
+
+```bash
+git clone https://github.com/vvlife/flappy-bird-neuroevolution-lab.git
+cd flappy-bird-neuroevolution-lab
+node server.js            # 啟動 → http://localhost:3000
+```
+
+### 用命令行訓練並提交
+
+```bash
+# 另開一個終端機
+node src/train.js --generations 60 --population 25 --out my-model.json
+node src/submit.js my-model.json "你的名字"
+```
+
+### 只用瀏覽器（不用裝任何東西）
+
+打開 `http://localhost:3000` → 切到 **🧬 在線訓練** 分頁 → 按「開始訓練」→ 訓練完直接「提交到排行榜」。
+
+---
+
+## 網頁介面
+
+| 分頁 | 功能 |
+|------|------|
+| 🏟 **排行榜 / 競技** | 排行榜（每筆可播放實戰、跑 benchmark、下載報告）、**多 Agent 同場競賽**、1x/2x/4x/8x 倍速、手動提交模型、**「🤖 給 Agent 的說明」一鍵複製** |
+| 🧬 **在線訓練** | 7 個可調參數（代數／種群數量／菁英 topK／突變率／種子／每代最長幀數／動畫速度）、種群競爭動畫、fitness 演化曲線、log、訓練完可提交／下載／觀看／再跑一次 |
+| 📖 **API 文檔** | `docs/API.md` 即時渲染，並可一鍵複製原文 |
+
+### 在線訓練參數
+
+| 參數 | 說明 | 預設 |
+|---|---|---|
+| 代數 | 演化總代數（達成目標會提前結束） | 30 |
+| 種群數量 | 每代鳥的數量 | 20 |
+| 菁英保留 topK | 每代直接保留的強者數 | 4 |
+| 突變率 | 每個權重被隨機擾動的機率 | 0.1 |
+| 隨機種子 | 記錄用（演化本身用亂數） | 12345 |
+| 每代最長幀數 | 單代 simulate 的 frame 上限 | 2000 |
+| 動畫速度 | 每個動畫幀跑幾個 sim step | 15 |
+
+> 實測預設參數約 **5～7 秒**即可訓練出滿分（221）模型。演化具隨機性，分數不理想時按「🔁 再跑一次」。
+
+---
+
+## 神經網絡與評分規則
+
+模型是一個 **2 → 6 → 1** 的前饋神經網絡：
+
+- **輸入** `x = [dx, dy]`
+  - `dx` =（最近管柱左緣 x − 鳥的 x）/ 畫布寬度
+  - `dy` =（鳥的 y − 缺口中心 y）/ 畫布高度
+- **推論**：隱藏層 `tanh`，輸出層 `sigmoid`
+- **決策**：輸出 `> 0.5` → 拍翅膀，否則不動
+
+```json
+{
+  "arch": [2, 6, 1],
+  "weights": [ [[...6×2...]], [[...1×6...]] ],
+  "biases":  [ [...6...], [...1...] ]
+}
+```
+
+- **評分賽道**固定種子 `EVAL_SEED = 12345`，**分數 = 成功通過的管柱數**。
+- 前端觀戰使用**同一個種子**播放，所以看到的畫面分數與提交時完全一致。
+- `MAX_FRAMES = 20000`（單次評分上限，撐滿即視為滿分 ≈ 221）。
+
+---
+
+## 接口
+
+| 方法 | 路徑 | 說明 |
+|------|------|------|
+| `POST` | `/api/submit` | 提交 `{ name, model }` → `{ id, score, rank, total }` |
+| `GET` | `/api/leaderboard` | 排行榜（含每筆 model） |
+| `GET` | `/api/model/:id` | 取得單筆模型 JSON |
+| `GET` | `/api/benchmark/:id?count=N` | 多種子穩健度統計（可下載） |
+
+完整規格見 **[`docs/API.md`](docs/API.md)**（網頁上也能直接看）。
+
+```bash
+# 提交
+curl -X POST http://localhost:3000/api/submit \
+  -H "Content-Type: application/json" \
+  -d '{"name":"學生-A","model":'$(cat model.json)'}'
+
+# Benchmark
+curl "http://localhost:3000/api/benchmark/<id>?count=10"
+```
+
+---
+
+## 專案結構
+
+```
+├── server.js              # 純 Node 內建模組 HTTP 伺服器（零外部依賴）
+├── src/
+│   ├── neuralnet.js       # 2→6→1 前饋網絡（UMD，Node/瀏覽器共用）
+│   ├── sim.js             # Flappy Bird 遊戲世界（headless 評分 + 可視覺化）
+│   ├── train.js           # CLI 遺傳演算法訓練腳本
+│   └── submit.js          # CLI 提交工具
+├── public/
+│   ├── index.html         # 三分頁：競技 / 在線訓練 / API 文檔
+│   ├── app.js             # 前端邏輯（含輕量 markdown 渲染器）
+│   ├── trainer.js         # 瀏覽器端神經演化訓練器
+│   └── style.css
+├── docs/API.md            # 接口文檔
+└── data/leaderboard.json  # 排行榜資料
+```
+
+**架構**：訓練（任意處）→ `model.json` → `POST /api/submit` → 伺服器固定賽道評分 → `data/leaderboard.json` → 排行榜 / 觀戰畫面。
+
+> `neuralnet.js` 與 `sim.js` 同時供 **Node 與瀏覽器**使用，確保「評分」與「觀戰」行為完全一致。
+
+---
+
+## 教學用途
+
+- 讓學生比較**不同訓練策略**的分數：遺傳演算法、手調權重、強化學習、演化 + 噪聲；
+- **排行榜**天然形成競爭動機，**觀戰畫面**讓抽象的神經網絡決策變得可觀察；
+- **多 Agent 同場競賽**讓「不同策略的取捨」直接視覺化對比；
+- **Benchmark** 可用來討論「過擬合評分賽道」vs「泛化能力」——模型在官方賽道拿高分，不代表在別的賽道也強；
+- 接口與模型格式**與語言無關**，方便融入程式設計 / AI 課程作業。
+
+---
+
+## License
+
+MIT

@@ -1,0 +1,244 @@
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  background: #f4f6f8;
+  color: #222;
+}
+header {
+  background: #1f2937;
+  color: #fff;
+  padding: 20px 28px;
+}
+header h1 { margin: 0 0 6px; font-size: 22px; }
+header p { margin: 0; opacity: 0.8; font-size: 14px; }
+.header-top {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 16px; flex-wrap: wrap;
+}
+
+/* 頂部菜單 */
+nav.tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+nav.tabs .tab {
+  border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08);
+  color: #e5e7eb; padding: 7px 13px; border-radius: 7px; cursor: pointer;
+  font-size: 13px; white-space: nowrap;
+}
+nav.tabs .tab:hover { background: rgba(255,255,255,.18); }
+nav.tabs .tab.active { background: #2563eb; border-color: #2563eb; color: #fff; font-weight: 600; }
+
+/* 視圖切換 */
+main { padding: 24px; }
+.view { display: none; }
+#view-play.active { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+#view-train.active, #view-docs.active { display: block; }
+.left { flex: 1 1 360px; min-width: 320px; }
+.right { flex: 0 0 auto; }
+h2 { font-size: 18px; margin: 18px 0 10px; }
+table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; }
+th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 14px; }
+th { background: #eef2f7; }
+td button {
+  border: none; background: #2563eb; color: #fff;
+  padding: 4px 10px; border-radius: 6px; cursor: pointer;
+}
+.actions { margin: 12px 0; display: flex; gap: 8px; flex-wrap: wrap; }
+.actions button {
+  border: none; background: #10b981; color: #fff;
+  padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 13px;
+}
+.actions button#refresh { background: #6b7280; }
+
+/* 排行榜工具列（全選/清除/一起玩） */
+.board-tools { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 10px; }
+button.tool {
+  border: none; background: #e5e7eb; color: #1f2937;
+  padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 13px;
+}
+button.tool:hover { background: #d1d5db; }
+button.race {
+  border: none; background: #ef4444; color: #fff;
+  padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;
+}
+button.race:hover { background: #dc2626; }
+#selCount { font-weight: 400; opacity: .85; }
+
+/* 排行榜表格 */
+#board td.ops { white-space: nowrap; }
+#board td.ops button { margin-right: 4px; }
+#board input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; }
+form { display: flex; flex-direction: column; gap: 8px; max-width: 420px; }
+form input[type=text], form input:not([type=file]) {
+  padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;
+}
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.row .file { font-size: 13px; color: #555; }
+form button[type=submit] {
+  border: none; background: #2563eb; color: #fff; padding: 9px 14px;
+  border-radius: 6px; cursor: pointer; align-self: flex-start;
+}
+#submitResult {
+  background: #111827; color: #a7f3d0; padding: 10px; border-radius: 6px;
+  font-size: 12px; white-space: pre-wrap; min-height: 20px;
+}
+
+/* 給 Agent 的說明 */
+.agent-box { position: relative; }
+.agent-box > button { margin-bottom: 8px; }
+#agentDoc {
+  background: #0f172a; color: #e2e8f0; padding: 14px; border-radius: 8px;
+  font-size: 12px; line-height: 1.55; white-space: pre-wrap; max-height: 340px;
+  overflow: auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+canvas {
+  background: #70c5ce; border-radius: 10px; box-shadow: 0 6px 18px rgba(0,0,0,.15);
+  display: block;
+}
+#status { margin-top: 10px; font-size: 14px; color: #374151; max-width: 400px; }
+#raceInfo {
+  margin-top: 8px; font-size: 13px; color: #111827; max-width: 400px;
+  background: #fff; border-radius: 8px; padding: 10px 12px; line-height: 1.7;
+}
+#raceInfo:empty { display: none; }
+
+/* 倍速控制 */
+.speed-control { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; font-size: 14px; color: #374151; }
+.speed-control .spd {
+  border: 1px solid #cbd5e1; background: #fff; color: #1f2937;
+  padding: 5px 11px; border-radius: 6px; cursor: pointer; font-size: 13px;
+}
+.speed-control .spd.active { background: #2563eb; border-color: #2563eb; color: #fff; font-weight: 600; }
+
+/* benchmark 彈窗 */
+.modal {
+  position: fixed; inset: 0; background: rgba(15,23,42,.55);
+  display: flex; align-items: center; justify-content: center; z-index: 50; padding: 20px;
+}
+.modal.hidden { display: none; }
+.modal-box {
+  background: #fff; border-radius: 12px; width: 100%; max-width: 460px;
+  padding: 18px; box-shadow: 0 20px 50px rgba(0,0,0,.3);
+}
+.modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.modal-head span { font-weight: 700; font-size: 16px; }
+.modal-foot { margin-top: 14px; text-align: right; }
+table.bench { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.bench th, table.bench td { padding: 6px 8px; border-bottom: 1px solid #eee; text-align: left; }
+table.bench th { background: #eef2f7; }
+.summary { margin-top: 12px; font-size: 14px; color: #111827; line-height: 1.8; }
+
+/* ============ 在線訓練頁 ============ */
+.train-grid {
+  display: grid; grid-template-columns: minmax(320px, 420px) auto;
+  gap: 24px; align-items: start;
+}
+@media (max-width: 900px) { .train-grid { grid-template-columns: 1fr; } }
+.train-controls h2 { margin-top: 0; }
+.hint { font-size: 13px; color: #6b7280; line-height: 1.6; margin: 0 0 14px; }
+.form-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px;
+  background: #fff; border-radius: 10px; padding: 14px; margin-bottom: 12px;
+}
+.form-grid label {
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: 12px; color: #374151; font-weight: 600;
+}
+.form-grid input {
+  padding: 7px 9px; border: 1px solid #cbd5e1; border-radius: 6px;
+  font-size: 14px; font-weight: 400; color: #111827;
+}
+.train-progress {
+  background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af;
+  padding: 10px 12px; border-radius: 8px; font-size: 13px; margin: 12px 0 10px;
+  font-variant-numeric: tabular-nums;
+}
+.train-log {
+  background: #0f172a; color: #cbd5e1; border-radius: 8px; padding: 10px 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px; line-height: 1.7; max-height: 220px;
+  overflow-y: auto; overflow-x: auto;
+}
+.train-log:empty { display: none; }
+.log-line { white-space: nowrap; }
+.log-line.log-best { color: #86efac; font-weight: 600; }
+.train-result {
+  margin-top: 16px; background: #f0fdf4; border: 1px solid #bbf7d0;
+  border-radius: 10px; padding: 14px;
+}
+.train-result.hidden { display: none; }
+.train-result h3 { margin: 0 0 8px; font-size: 16px; }
+.train-result .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+.train-result .row input {
+  flex: 1 1 160px; padding: 8px 10px; border: 1px solid #cbd5e1;
+  border-radius: 6px; font-size: 14px;
+}
+#trainSubmitResult {
+  background: #111827; color: #a7f3d0; padding: 10px; border-radius: 6px;
+  font-size: 12px; white-space: pre-wrap; margin: 10px 0 0; min-height: 18px;
+}
+.train-visual { width: 400px; max-width: 100%; }
+.train-visual canvas#trainCanvas {
+  background: #70c5ce; border-radius: 10px; box-shadow: 0 6px 18px rgba(0,0,0,.15);
+  display: block; max-width: 100%; height: auto;
+}
+.chart-wrap {
+  margin-top: 12px; background: #fff; border-radius: 10px; padding: 10px 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+}
+.chart-title { font-size: 12px; color: #64748b; margin-bottom: 6px; font-weight: 600; }
+#trainChart { display: block; width: 100%; height: auto; border-radius: 6px; }
+
+/* ============ API 文檔頁 ============ */
+.docs-wrap {
+  background: #fff; border-radius: 12px; padding: 20px 24px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.06); max-width: 900px;
+}
+.docs-bar {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 12px; flex-wrap: wrap; padding-bottom: 12px; margin-bottom: 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.docs-note { font-size: 13px; color: #6b7280; }
+.docs-note code {
+  background: #f1f5f9; padding: 1px 6px; border-radius: 4px; font-size: 12px;
+}
+.markdown { font-size: 14px; line-height: 1.75; color: #1f2937; }
+.markdown h1 { font-size: 22px; margin: 22px 0 12px; padding-bottom: 8px; border-bottom: 2px solid #e5e7eb; }
+.markdown h2 { font-size: 18px; margin: 22px 0 10px; padding-bottom: 6px; border-bottom: 1px solid #e5e7eb; }
+.markdown h3 { font-size: 16px; margin: 18px 0 8px; }
+.markdown p { margin: 8px 0; }
+.markdown code {
+  background: #f1f5f9; color: #be185d; padding: 1px 6px; border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px;
+}
+.markdown pre {
+  background: #0f172a; color: #e2e8f0; padding: 14px 16px; border-radius: 8px;
+  overflow-x: auto; font-size: 12.5px; line-height: 1.6;
+}
+.markdown pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
+.markdown blockquote {
+  margin: 10px 0; padding: 8px 14px; border-left: 4px solid #2563eb;
+  background: #eff6ff; color: #1e40af; border-radius: 0 6px 6px 0;
+}
+.markdown ul, .markdown ol { margin: 8px 0; padding-left: 24px; }
+.markdown li { margin: 3px 0; }
+.markdown hr { border: none; border-top: 1px solid #e5e7eb; margin: 18px 0; }
+.markdown a { color: #2563eb; }
+.markdown .table-wrap { overflow-x: auto; margin: 12px 0; }
+.markdown table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.markdown th, .markdown td { padding: 7px 10px; border: 1px solid #e5e7eb; text-align: left; }
+.markdown th { background: #f8fafc; font-weight: 600; }
+
+/* ============ 窄螢幕適應 ============ */
+@media (max-width: 520px) {
+  main { padding: 16px; }
+  header { padding: 16px 18px; }
+  header h1 { font-size: 18px; }
+  .left { min-width: 0; }
+  /* 固定 400px 的畫布改為容器寬度並等比縮放 */
+  .right, .train-visual { width: 100%; max-width: 400px; min-width: 0; }
+  canvas#game, canvas#trainCanvas, #trainChart { max-width: 100%; height: auto; }
+  #status, #raceInfo { max-width: 100%; }
+  .form-grid { grid-template-columns: 1fr; }
+  .docs-wrap { padding: 16px; }
+}
