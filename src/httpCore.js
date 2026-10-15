@@ -5,7 +5,7 @@
  */
 const fs = require('fs');
 const path = require('path');
-const { NeuralNet } = require('../public/src/neuralnet.js');
+const { Model } = require('../public/src/models.js');
 const { FlappySim, CONFIG } = require('../public/src/sim.js');
 
 const ROOT = path.join(__dirname, '..');
@@ -38,14 +38,14 @@ function saveBoard(b) {
 
 // 用固定評分種子 EVAL_SEED 跑模型，回傳通過的管柱數
 function evaluateModel(model, seed, maxFrames) {
-  const net = NeuralNet.deserialize(model);
+  const m = Model.fromJSON(model); // 統一模型介面（神經網絡 / 決策樹 / 隨機森林 / Q-table）
   const sim = new FlappySim(seed);
   let y = CONFIG.HEIGHT / 2;
   let vy = 0;
   let frame = 0;
   while (frame < maxFrames) {
     const inputs = sim.getInputs(y);
-    if (net.activate(inputs)[0] > 0.5) vy = CONFIG.FLAP_VY; else vy += CONFIG.GRAVITY;
+    if (m.predict(inputs) > m.threshold) vy = CONFIG.FLAP_VY; else vy += CONFIG.GRAVITY;
     y += vy;
     if (sim.collisionAt(y)) break;
     sim.advance();
@@ -79,9 +79,14 @@ async function handleApi(req, res) {
         return true;
       }
       const model = data.model;
-      if (!model.arch || JSON.stringify(model.arch) !== JSON.stringify([2, 6, 1])) {
+      // 放寬驗證：只要能被 Model.fromJSON 解析、且能跑一次推論即可（支援神經網絡 / 決策樹 / 隨機森林 / Q-table）
+      let m;
+      try {
+        m = Model.fromJSON(model);
+        m.predict([0.1, 0.2]); // 冒煙測試：確保推論不會抛錯
+      } catch (e) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'model.arch 必須為 [2,6,1]' }));
+        res.end(JSON.stringify({ error: '模型格式無法解析：' + e.message }));
         return true;
       }
       let score;
@@ -89,7 +94,7 @@ async function handleApi(req, res) {
         score = evaluateModel(model, CONFIG.EVAL_SEED, CONFIG.MAX_FRAMES);
       } catch (e) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: '模型計算失敗，請檢查 weights/biases 格式：' + e.message }));
+        res.end(JSON.stringify({ error: '模型計算失敗，請檢查模型格式：' + e.message }));
         return true;
       }
       const board = loadBoard();
@@ -98,7 +103,8 @@ async function handleApi(req, res) {
         id,
         name: String(data.name).slice(0, 40),
         score,
-        arch: model.arch,
+        type: m.type,
+        arch: model.arch || null,
         model,
         createdAt: new Date().toISOString()
       };
@@ -137,12 +143,12 @@ async function handleApi(req, res) {
       for (let i = 1; i < count; i++) seeds.push(1000 * i + 7);
 
       const results = seeds.map(seed => {
-        const net = NeuralNet.deserialize(entry.model);
+        const m = Model.fromJSON(entry.model);
         const sim = new FlappySim(seed);
         let y = CONFIG.HEIGHT / 2, vy = 0, frame = 0;
         while (frame < CONFIG.MAX_FRAMES) {
           const inputs = sim.getInputs(y);
-          if (net.activate(inputs)[0] > 0.5) vy = CONFIG.FLAP_VY; else vy += CONFIG.GRAVITY;
+          if (m.predict(inputs) > m.threshold) vy = CONFIG.FLAP_VY; else vy += CONFIG.GRAVITY;
           y += vy;
           if (sim.collisionAt(y)) break;
           sim.advance();
@@ -159,6 +165,7 @@ async function handleApi(req, res) {
       const response = {
         id: entry.id,
         name: entry.name,
+        type: entry.type,
         arch: entry.arch,
         evalSeed: CONFIG.EVAL_SEED,
         seedsCount: seeds.length,

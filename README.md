@@ -1,6 +1,6 @@
 # 🐤 Flappy Bird AI 訓練競賽平台 · Flappy Bird AI Training Arena
 
-> 用**神經演化（Neuro-Evolution）**訓練一個會玩 Flappy Bird 的神經網絡，提交模型、登上排行榜、觀看實戰畫面。
+> 用**神經演化（Neuro-Evolution）**、**模仿學習（決策樹 / 隨機森林）**、或**強化學習（Q-learning）**訓練會玩 Flappy Bird 的 Agent，提交模型、登上排行榜、觀看實戰畫面。
 > 學生與 AI 代理（如 WorkBuddy）都能透過接口參賽。
 
 [![node](https://img.shields.io/badge/node-18%2B-5FA04E?logo=node.js)](https://nodejs.org)
@@ -88,18 +88,27 @@ node src/submit.js my-model.json "你的名字"
 
 ---
 
-## 神經網絡與評分規則
+## 神經網絡、決策樹、隨機森林、強化學習 —— 都能上場
 
-模型是一個 **2 → 6 → 1** 的前饋神經網絡：
+平台支援**多種模型類型**，但對外只有一個統一契約：
+`predict([dx, dy]) > threshold` 為真則拍翅膀，否則不動。四種類型（用 `type` 欄位區分）：
 
-- **輸入** `x = [dx, dy]`
+| 類型 | 訓練方式 | 說明 |
+|------|----------|------|
+| 🧠 `neuralnet`（2→6→1） | 遺傳演算法 / 梯度 | 黑箱神經網絡（預設 `threshold=0.5`） |
+| 🌳 `decision_tree` | 模仿學習（CART） | 可解釋規則樹（`threshold=0`） |
+| 🌲 `random_forest` | 模仿學習（多樹） | 多棵 CART 平均，更穩（`threshold=0`） |
+| 🎯 `q_table` | 強化學習（Q-learning） | 離散狀態查表策略（`threshold=0`） |
+
+- **輸入** `x = [dx, dy]`（四種模型皆同）：
   - `dx` =（最近管柱左緣 x − 鳥的 x）/ 畫布寬度
   - `dy` =（鳥的 y − 缺口中心 y）/ 畫布高度
-- **推論**：隱藏層 `tanh`，輸出層 `sigmoid`
-- **決策**：輸出 `> 0.5` → 拍翅膀，否則不動
+- 舊格式（只有 `arch` 沒有 `type`）會自動視為 `neuralnet`，完全向後相容。
+- 完整模型 JSON 格式、推論公式與訓練腳本參數見 **[`public/docs/API.md`](public/docs/API.md)**（§1 模型格式、§4 四種訓練路徑）。
 
 ```json
 {
+  "type": "neuralnet",
   "arch": [2, 6, 1],
   "weights": [ [[...6×2...]], [[...1×6...]] ],
   "biases":  [ [...6...], [...1...] ]
@@ -141,7 +150,9 @@ curl "http://localhost:3000/api/benchmark/<id>?count=10"
 ├── server.js              # 純 Node 內建模組 HTTP 伺服器（零外部依賴；本地與 Vercel 同一份）
 ├── src/
 │   ├── httpCore.js        # API 邏輯：評分 / 排行榜 / benchmark（本地與 serverless 共用）
-│   ├── train.js           # CLI 遺傳演算法訓練腳本
+│   ├── train.js           # CLI 遺傳演算法訓練腳本（neuralnet）
+│   ├── train_rl.js        # CLI 強化學習訓練腳本（q_table / Q-learning）
+│   ├── train_sklearn.js   # CLI 模仿學習訓練腳本（decision_tree / random_forest）
 │   └── submit.js          # CLI 提交工具
 ├── public/
 │   ├── index.html         # 三分頁：競技 / 在線訓練 / API 文檔
@@ -150,6 +161,7 @@ curl "http://localhost:3000/api/benchmark/<id>?count=10"
 │   ├── style.css
 │   ├── src/               # 遊戲邏輯（UMD，Node / 瀏覽器共用）
 │   │   ├── neuralnet.js   # 2→6→1 前饋網絡
+│   │   ├── models.js      # 統一模型抽象（4 種 type 的 predict/threshold 契約）
 │   │   └── sim.js         # Flappy Bird 遊戲世界（headless 評分 + 可視覺化）
 │   └── docs/
 │       └── API.md         # 接口文檔（網頁即時渲染）
@@ -165,7 +177,7 @@ curl "http://localhost:3000/api/benchmark/<id>?count=10"
 
 ## 教學用途
 
-- 讓學生比較**不同訓練策略**的分數：遺傳演算法、手調權重、強化學習、演化 + 噪聲；
+- 讓學生比較**不同訓練策略**的分數：遺傳演算法、模仿學習決策樹 / 隨機森林、強化學習、手調權重；
 - **排行榜**天然形成競爭動機，**觀戰畫面**讓抽象的神經網絡決策變得可觀察；
 - **多 Agent 同場競賽**讓「不同策略的取捨」直接視覺化對比；
 - **Benchmark** 可用來討論「過擬合評分賽道」vs「泛化能力」——模型在官方賽道拿高分，不代表在別的賽道也強；

@@ -65,17 +65,23 @@
 
   /* ==================== 給 Agent 的說明（一鍵複製） ==================== */
   const AGENT_DOC = [
-    '你是參與「Flappy Bird AI 訓練競賽」的 AI 代理。目標：訓練一個神經網絡玩 Flappy Bird，提交到排行榜，並回報分數與排名。',
+    '你是參與「Flappy Bird AI 訓練競賽」的 AI 代理。目標：訓練一個會玩 Flappy Bird 的模型（神經網絡 / 決策樹 / 隨機森林 / 強化學習 Q-table 皆可），提交到排行榜，並回報分數與排名。',
     '',
-    '【模型格式】必須是 2→6→1 前饋神經網絡 JSON：',
-    '{"arch":[2,6,1],"weights":[[...],...],"biases":[[...],...]}',
+    '【統一推論契約】所有模型都是：predict([dx,dy]) > threshold 時「拍翅膀」，否則「不動」。',
     '- 輸入 x=[dx,dy]：dx=(最近管柱左緣x - 鳥x)/畫布寬；dy=(鳥y - 缺口中心y)/畫布高',
-    '- 推論：h_j = tanh(weights[0][j]·x + biases[0][j])；o = sigmoid(weights[1][0]·h + biases[1][0])',
-    '- 決策：o > 0.5 → 拍翅膀，否則不動',
+    '- 模型 JSON 需帶 type 欄位，常見四種（詳見 docs/API.md 第 1 節）：',
+    '  1) 神經網絡  {"type":"neuralnet","arch":[2,6,1],"weights":[...],"biases":[...]}  (threshold 預設 0.5)',
+    '  2) 決策樹    {"type":"decision_tree","tree":{"children_left":[..],"children_right":[..],"feature":[..],"threshold":[..],"value":[..]}}',
+    '  3) 隨機森林  {"type":"random_forest","trees":[<樹>,<樹>,...]}',
+    '  4) 強化學習  {"type":"q_table","bins":[10,10],"q":[[[qNoop,qFlap],...],...]}  (輸出=Q[拍]-Q[不動])',
+    '- 向後相容：沒有 type 但帶 arch 的舊模型視為 neuralnet。',
     '',
-    '【訓練】本地執行（產出 model.json）：',
-    'node src/train.js --generations 60 --population 25 --out model.json',
-    '（或用任何語言 / PyTorch 產出同格式 JSON）',
+    '【訓練（本地 CLI，自行選一種）】',
+    '  神經演化： node src/train.js --generations 60 --population 25 --out model.json',
+    '  強化學習： node src/train_rl.js --episodes 1000 --bins 12 --out rl-model.json',
+    '  決策樹：   node src/train_sklearn.js --mode tree   --out tree-model.json',
+    '  隨機森林： node src/train_sklearn.js --mode forest --out rf-model.json',
+    '（也可完全用 Python/PyTorch 自行訓練，只要產出符合上述 JSON 即可）',
     '',
     '【提交】POST http://localhost:3000/api/submit',
     '  Content-Type: application/json',
@@ -88,7 +94,7 @@
     '  GET /api/benchmark/:id?count=10   多種子穩健度統計',
     '',
     '【評分】固定種子賽道 EVAL_SEED=12345，分數=通過管柱數；所有人同一賽道，公平可比。',
-    '【完成後請回報】模型名稱、分數、排名、是否登上榜首。'
+    '【完成後請回報】模型名稱、模型類型(type)、分數、排名、是否登上榜首。'
   ].join('\n');
 
   document.getElementById('agentDoc').textContent = AGENT_DOC;
@@ -238,9 +244,10 @@
     }
     board.forEach((e, i) => {
       const tr = document.createElement('tr');
+      const typeLabel = window.Model.label(e.type || (e.arch ? 'neuralnet' : 'neuralnet'));
       tr.innerHTML =
         `<td><input type="checkbox" class="sel" data-id="${e.id}"></td>` +
-        `<td>${i + 1}</td><td>${escapeHtml(e.name)}</td><td>${e.score}</td>` +
+        `<td>${i + 1}</td><td>${escapeHtml(e.name)}</td><td class="type-cell">${typeLabel}</td><td>${e.score}</td>` +
         `<td class="ops">` +
         `<button data-play="${e.id}" title="觀看實戰">▶</button>` +
         `<button data-bench="${e.id}" title="Benchmark">📊</button>` +
@@ -329,8 +336,9 @@
   /* ==================== 單隻播放（支援加速） ==================== */
   function watchModel(model, name) {
     cancelRaf();
+    const m = window.Model.fromJSON(model);
     const b = {
-      net: window.NeuralNet.deserialize(model),
+      model: m,
       name: name || '模型', color: '#ffd33d',
       y: HEIGHT / 2, vy: 0, alive: true, score: 0
     };
@@ -341,7 +349,7 @@
     function step() {
       for (let s = 0; s < speed; s++) {
         const inputs = sim.getInputs(b.y);
-        if (b.net.activate(inputs)[0] > 0.5) b.vy = FLAP_VY; else b.vy += GRAVITY;
+        if (b.model.predict(inputs) > b.model.threshold) b.vy = FLAP_VY; else b.vy += GRAVITY;
         b.y += b.vy;
         if (sim.collisionAt(b.y)) { b.alive = false; break; }
         const prev = sim.score;
@@ -362,7 +370,7 @@
   function watchRace(entries) {
     cancelRaf();
     const birds = entries.map((e, i) => ({
-      net: window.NeuralNet.deserialize(e.model),
+      model: window.Model.fromJSON(e.model),
       name: e.name,
       color: COLORS[i % COLORS.length],
       y: HEIGHT / 2, vy: 0, alive: true, score: 0
@@ -377,7 +385,7 @@
         for (const b of birds) {
           if (!b.alive) continue;
           const inputs = sim.getInputs(b.y);
-          if (b.net.activate(inputs)[0] > 0.5) b.vy = FLAP_VY; else b.vy += GRAVITY;
+          if (b.model.predict(inputs) > b.model.threshold) b.vy = FLAP_VY; else b.vy += GRAVITY;
           b.y += b.vy;
           if (sim.collisionAt(b.y)) { b.alive = false; continue; }
           anyAlive = true;
@@ -625,12 +633,12 @@
 
   // 用與伺服器相同的邏輯（EVAL_SEED）算真實分數
   function scoreModel(model) {
-    const net = window.NeuralNet.deserialize(model);
+    const m = window.Model.fromJSON(model);
     const sim = new window.FlappySim(EVAL_SEED);
     let y = HEIGHT / 2, vy = 0, frame = 0;
     while (frame < MAX_FRAMES) {
       const inputs = sim.getInputs(y);
-      if (net.activate(inputs)[0] > 0.5) vy = FLAP_VY; else vy += GRAVITY;
+      if (m.predict(inputs) > m.threshold) vy = FLAP_VY; else vy += GRAVITY;
       y += vy;
       if (sim.collisionAt(y)) break;
       sim.advance();

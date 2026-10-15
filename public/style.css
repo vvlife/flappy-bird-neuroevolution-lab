@@ -67,6 +67,7 @@ button.race:hover { background: #dc2626; }
 #board td.ops { white-space: nowrap; }
 #board td.ops button { margin-right: 4px; }
 #board input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; }
+#board td.type-cell { white-space: nowrap; font-size: 12px; opacity: .9; }
 form { display: flex; flex-direction: column; gap: 8px; max-width: 420px; }
 form input[type=text], form input:not([type=file]) {
   padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;
