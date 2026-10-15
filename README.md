@@ -6,6 +6,7 @@
 [![node](https://img.shields.io/badge/node-18%2B-5FA04E?logo=node.js)](https://nodejs.org)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![deps](https://img.shields.io/badge/dependencies-0-ff69b4?logo=npm)](package.json)
+[![online](https://img.shields.io/badge/%F0%9F%8C%90%20%E7%B7%9A%E4%B8%8A%E9%AB%94%E9%A9%97-flappy--ai--platform.vercel.app-2ea44f)](https://flappy-ai-platform.vercel.app)
 
 ---
 
@@ -47,13 +48,29 @@ node src/submit.js my-model.json "你的名字"
 
 ---
 
+## 🌐 線上體驗（免安裝）
+
+不用裝任何東西，直接打開就能玩、訓練、提交、觀戰：
+
+**👉 https://flappy-ai-platform.vercel.app**
+
+<p align="center">
+  <img src="docs/screenshots/play-race.png" width="48%" alt="多 Agent 同場競技">
+  <img src="docs/screenshots/train.png" width="48%" alt="在線訓練">
+</p>
+
+> 線上版本為教學示範：排行榜預先放好幾個示範模型，你提交的成績會**即時顯示並排名**；
+> 因部署在 serverless 環境，排行榜資料在實例冷啟動時會回到預設示範名單（本地 `node server.js` 則完整持久化）。
+
+---
+
 ## 網頁介面
 
 | 分頁 | 功能 |
 |------|------|
 | 🏟 **排行榜 / 競技** | 排行榜（每筆可播放實戰、跑 benchmark、下載報告）、**多 Agent 同場競賽**、1x/2x/4x/8x 倍速、手動提交模型、**「🤖 給 Agent 的說明」一鍵複製** |
 | 🧬 **在線訓練** | 7 個可調參數（代數／種群數量／菁英 topK／突變率／種子／每代最長幀數／動畫速度）、種群競爭動畫、fitness 演化曲線、log、訓練完可提交／下載／觀看／再跑一次 |
-| 📖 **API 文檔** | `docs/API.md` 即時渲染，並可一鍵複製原文 |
+| 📖 **API 文檔** | `public/docs/API.md` 即時渲染，並可一鍵複製原文 |
 
 ### 在線訓練參數
 
@@ -104,7 +121,7 @@ node src/submit.js my-model.json "你的名字"
 | `GET` | `/api/model/:id` | 取得單筆模型 JSON |
 | `GET` | `/api/benchmark/:id?count=N` | 多種子穩健度統計（可下載） |
 
-完整規格見 **[`docs/API.md`](docs/API.md)**（網頁上也能直接看）。
+完整規格見 **[`public/docs/API.md`](public/docs/API.md)**（網頁上也能直接看）。
 
 ```bash
 # 提交
@@ -121,19 +138,23 @@ curl "http://localhost:3000/api/benchmark/<id>?count=10"
 ## 專案結構
 
 ```
-├── server.js              # 純 Node 內建模組 HTTP 伺服器（零外部依賴）
+├── server.js              # 純 Node 內建模組 HTTP 伺服器（零外部依賴；本地與 Vercel 同一份）
 ├── src/
-│   ├── neuralnet.js       # 2→6→1 前饋網絡（UMD，Node/瀏覽器共用）
-│   ├── sim.js             # Flappy Bird 遊戲世界（headless 評分 + 可視覺化）
+│   ├── httpCore.js        # API 邏輯：評分 / 排行榜 / benchmark（本地與 serverless 共用）
 │   ├── train.js           # CLI 遺傳演算法訓練腳本
 │   └── submit.js          # CLI 提交工具
 ├── public/
 │   ├── index.html         # 三分頁：競技 / 在線訓練 / API 文檔
 │   ├── app.js             # 前端邏輯（含輕量 markdown 渲染器）
 │   ├── trainer.js         # 瀏覽器端神經演化訓練器
-│   └── style.css
-├── docs/API.md            # 接口文檔
-└── data/leaderboard.json  # 排行榜資料
+│   ├── style.css
+│   ├── src/               # 遊戲邏輯（UMD，Node / 瀏覽器共用）
+│   │   ├── neuralnet.js   # 2→6→1 前饋網絡
+│   │   └── sim.js         # Flappy Bird 遊戲世界（headless 評分 + 可視覺化）
+│   └── docs/
+│       └── API.md         # 接口文檔（網頁即時渲染）
+├── docs/screenshots/      # README 截圖
+└── data/leaderboard.json  # 排行榜資料（含預置示範模型）
 ```
 
 **架構**：訓練（任意處）→ `model.json` → `POST /api/submit` → 伺服器固定賽道評分 → `data/leaderboard.json` → 排行榜 / 觀戰畫面。

@@ -12,8 +12,8 @@
  *   node src/train.js --generations 40 --population 20 --topK 4 --mutationRate 0.1 --seed 7 --out model.json
  */
 const fs = require('fs');
-const { NeuralNet } = require('./neuralnet.js');
-const { FlappySim, CONFIG } = require('./sim.js');
+const { NeuralNet } = require('../public/src/neuralnet.js');
+const { FlappySim, CONFIG } = require('../public/src/sim.js');
 
 function parseArgs(argv) {
   const args = {

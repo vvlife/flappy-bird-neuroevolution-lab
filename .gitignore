@@ -12,3 +12,4 @@ model.json
 # 暫存檔
 *.log
 .DS_Store
+.vercel
